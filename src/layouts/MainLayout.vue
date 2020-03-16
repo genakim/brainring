@@ -1,13 +1,16 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-header class="bg-transparent">
-        <Round class="text-h3 text-dark justify-center flex">Раунд {{round}}</Round>
+        <Round class="text-h3 text-dark justify-center flex" v-if="gameStarted">Раунд {{round}}</Round>
     </q-header>
     <q-page-container>
 
       <Scores :scores="scores" class="justify-center flex"></Scores>
       <div class="flex justify-center">
+        <FalseStart v-if="falseStartPlayerId" :playerId="falseStartPlayerId"></FalseStart>
+        <GameOver v-else-if="!gameStarted" :round="round"></GameOver>
         <q-circular-progress
+          v-else
           v-model="value"
           show-value
           :min="0"
@@ -17,14 +20,22 @@
           :color="progressColor"
           track-color="grey-3"
         >
-          <span v-if="!falseStartPlayerId" class="round-font">{{timer}}</span>
-          <span v-if="falseStartPlayerId" class="round-font">X</span>
+          <span class="round-font">{{timer}}</span>
         </q-circular-progress>
       </div>
     </q-page-container>
     <q-footer class="bg-transparent">
       <q-toolbar class="justify-center q-mb-sm">
-        <GameActions v-if="!playerId" :loading="loading" @startRound="startRound" @stopRound="stopRound" @push="push($event)"/>
+        <GameActions v-if="!playerId"
+                     :loading="loading"
+                     :deviceOn="deviceOn"
+                     :gameStarted="gameStarted"
+                     @startRound="startRound"
+                     @stopRound="stopRound"
+                     @push="push($event)"
+                     @startGame="startGame"
+                     @resetGame="resetGame"
+        />
         <PlayerActions v-if="playerId" :playerId="playerId" @answer="answer($event)"/>
       </q-toolbar>
     </q-footer>
@@ -36,6 +47,9 @@ import Round from 'components/Round'
 import Scores from 'components/Scores'
 import PlayerActions from 'components/PlayerActions'
 import GameActions from 'components/GameActions'
+import FalseStart from 'components/FalseStart'
+import GameOver from 'components/GameOver'
+const ipcRenderer = require('electron').ipcRenderer
 
 export default {
   name: 'MainLayout',
@@ -44,7 +58,9 @@ export default {
     Round,
     Scores,
     PlayerActions,
-    GameActions
+    GameActions,
+    FalseStart,
+    GameOver
   },
   computed: {
     timer: function () {
@@ -68,7 +84,7 @@ export default {
   },
   watch: {
     round: function () {
-      if (this.round >= 5) {
+      if (this.round > 5) {
         this.gameStarted = false
       }
     }
@@ -89,14 +105,14 @@ export default {
       }
     },
     push: function (playerId) {
-      if (this.wrongList[playerId]) {
+      if (!this.gameStarted || this.wrongList[playerId]) {
         return
       }
 
       if (this.loading) { // player pushed the button
         this.stopTimer()
         this.playerId = playerId
-      } else if (!this.roundStarted) { // false start
+      } else if (!this.roundStarted && !this.falseStartPlayerId) { // falseStart only for first
         this.falseStartPlayerId = playerId
         this.wrongList[playerId] = true
       }
@@ -114,7 +130,6 @@ export default {
       this.falseStartPlayerId = null
       this.loading = false
       this.wrongList = {}
-      this.round++
     },
     startRound: function () {
       const vm = this
@@ -123,6 +138,7 @@ export default {
         return this.stopTimer()
       }
 
+      vm.round++
       vm.roundStarted = true
       vm.loading = true
       vm.gameStarted = true
@@ -135,6 +151,24 @@ export default {
           vm.stopRound()
         }
       }, 100)
+    },
+    startGame: function () {
+      this.gameStarted = true
+    },
+    resetGame: function () {
+      this.stopTimer()
+      this.value = 3000
+      this.valueStart = 3000
+      this.roundStarted = false
+      this.gameStarted = false
+      this.falseStartPlayerId = null
+      this.playerId = null
+      this.wrongList = {}
+      this.round = 1
+      this.scores = {
+        green: 0,
+        red: 0
+      }
     }
   },
   data () {
@@ -148,12 +182,27 @@ export default {
       falseStartPlayerId: null,
       playerId: null,
       wrongList: {},
+      deviceOn: false,
       round: 1,
       scores: {
         green: 0,
         red: 0
       }
     }
+  },
+  created: function () {
+    const vm = this
+    ipcRenderer.on('push', (event, playerId) => {
+      vm.push(playerId)
+    })
+    ipcRenderer.on('deviceInfo', (event, code) => {
+      console.log('deviceInfo', code)
+      if (code === 200) {
+        vm.deviceOn = true
+      }
+    })
+    ipcRenderer.send('uiCreated', true)
+    // ipcRenderer.sendTo(webContentsId, channel, ...args) Sends a message to a window with webContentsId via channel.
   }
 }
 </script>
