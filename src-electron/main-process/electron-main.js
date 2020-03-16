@@ -1,4 +1,12 @@
 import { app, BrowserWindow, nativeTheme } from 'electron'
+import SerialPort from 'serialport'
+import five from 'johnny-five'
+
+let board,
+  buttonRed,
+  buttonGreen,
+  ledRed,
+  ledGreen
 
 try {
   if (process.platform === 'win32' && nativeTheme.shouldUseDarkColors === true) {
@@ -27,7 +35,7 @@ function createWindow () {
     webPreferences: {
       // Change from /quasar.conf.js > electron > nodeIntegration;
       // More info: https://quasar.dev/quasar-cli/developing-electron-apps/node-integration
-      nodeIntegration: QUASAR_NODE_INTEGRATION,
+      nodeIntegration: QUASAR_NODE_INTEGRATION
 
       // More info: /quasar-cli/developing-electron-apps/electron-preload-script
       // preload: path.resolve(__dirname, 'electron-preload.js')
@@ -35,6 +43,59 @@ function createWindow () {
   })
 
   mainWindow.loadURL(process.env.APP_URL)
+
+  SerialPort.list().then(devices => {
+    devices.forEach(device => {
+      if (device.productId !== '0043') {
+        mainWindow.webContents.send('deviceInfo', 404) // device not found
+        return
+      }
+
+      mainWindow.webContents.send('deviceInfo', 200) // device found
+
+      board = new five.Board(
+        {
+          port: device.path
+          // timeout: 36000
+        }
+      )
+
+      board.on('ready', function () {
+        buttonGreen = new five.Button(7)
+        buttonRed = new five.Button({
+          pin: 2,
+          isPullup: true
+        })
+
+        ledGreen = new five.Led(12)
+        ledRed = new five.Led(13)
+
+        buttonGreen.on('down', function () {
+          console.log('down')
+          ledGreen.on()
+
+          mainWindow.webContents.send('push', 'green')
+        })
+
+        buttonGreen.on('up', function () {
+          console.log('btn 1 up')
+          ledGreen.off()
+        })
+
+        buttonRed.on('down', function () {
+          console.log('down')
+          ledRed.on()
+
+          mainWindow.webContents.send('push', 'red')
+        })
+
+        buttonRed.on('up', function () {
+          console.log('up')
+          ledRed.off()
+        })
+      })
+    })
+  })
 
   mainWindow.on('closed', () => {
     mainWindow = null
