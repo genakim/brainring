@@ -1,6 +1,7 @@
-import { app, BrowserWindow, nativeTheme } from 'electron'
+import { app, BrowserWindow, nativeTheme, Menu, dialog } from 'electron'
 import SerialPort from 'serialport'
 import five from 'johnny-five'
+const path = require('path')
 
 let board,
   buttonRed,
@@ -22,16 +23,20 @@ if (process.env.PROD) {
   global.__statics = require('path').join(__dirname, 'statics').replace(/\\/g, '\\\\')
 }
 
-let mainWindow
+
+setMenu()
+
+let operatorWindow, settingsWindow
 
 function createWindow () {
   /**
    * Initial window options
    */
-  mainWindow = new BrowserWindow({
+  operatorWindow = new BrowserWindow({
     width: 1000,
     height: 600,
     useContentSize: true,
+    fullscreenable: true,
     webPreferences: {
       // Change from /quasar.conf.js > electron > nodeIntegration;
       // More info: https://quasar.dev/quasar-cli/developing-electron-apps/node-integration
@@ -42,16 +47,16 @@ function createWindow () {
     }
   })
 
-  mainWindow.loadURL(process.env.APP_URL)
+  operatorWindow.loadURL(process.env.APP_URL)
 
   SerialPort.list().then(devices => {
     devices.forEach(device => {
       if (device.productId !== '0043') {
-        mainWindow.webContents.send('deviceInfo', 404) // device not found
+        operatorWindow.webContents.send('deviceInfo', 404) // device not found
         return
       }
 
-      mainWindow.webContents.send('deviceInfo', 200) // device found
+      operatorWindow.webContents.send('deviceInfo', 200) // device found
 
       board = new five.Board(
         {
@@ -74,7 +79,7 @@ function createWindow () {
           console.log('down')
           ledGreen.on()
 
-          mainWindow.webContents.send('push', 'green')
+          operatorWindow.webContents.send('push', 'green')
         })
 
         buttonGreen.on('up', function () {
@@ -86,7 +91,7 @@ function createWindow () {
           console.log('down')
           ledRed.on()
 
-          mainWindow.webContents.send('push', 'red')
+          operatorWindow.webContents.send('push', 'red')
         })
 
         buttonRed.on('up', function () {
@@ -97,8 +102,8 @@ function createWindow () {
     })
   })
 
-  mainWindow.on('closed', () => {
-    mainWindow = null
+  operatorWindow.on('closed', () => {
+    operatorWindow = null
   })
 }
 
@@ -111,7 +116,77 @@ app.on('window-all-closed', () => {
 })
 
 app.on('activate', () => {
-  if (mainWindow === null) {
+  if (operatorWindow === null) {
     createWindow()
   }
 })
+function openSettings () {
+  settingsWindow = new BrowserWindow({
+    title: 'Настройки',
+    width: 400,
+    height: 700,
+    useContentSize: false,
+    parent: operatorWindow,
+    modal: true,
+    titleBarStyle: 'hidden',
+    thickFrame: true,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    webPreferences: {
+      // Change from /quasar.conf.js > electron > nodeIntegration;
+      // More info: https://quasar.dev/quasar-cli/developing-electron-apps/node-integration
+      nodeIntegration: QUASAR_NODE_INTEGRATION
+
+      // More info: /quasar-cli/developing-electron-apps/electron-preload-script
+      // preload: path.resolve(__dirname, 'electron-preload.js')
+    }
+  })
+  settingsWindow.removeMenu()
+  console.log(process.env.APP_URL);
+  settingsWindow.loadURL(process.env.APP_URL + '/#/settings')
+}
+function setMenu () {
+  const isMac = process.platform === 'darwin'
+  const template = [
+    {
+      label: 'Игра',
+      submenu: [
+        {
+          label: 'Настройки',
+          enabled: true,
+          click: () => {
+            openSettings()
+          }
+        },
+        isMac ? { label: 'Выйти', role: 'close' } : { label: 'Выйти', role: 'quit' }
+      ]
+    },
+    {
+      label: 'Помощь',
+      role: 'help',
+      submenu: [
+        {
+          label: 'Правила игры',
+        },
+        {
+          label: 'Периферия'
+        },
+        { type: 'separator' },
+        {
+          label: 'О программе',
+          click: () => {
+            dialog.showMessageBox(operatorWindow, {
+                type: 'info',
+                title: 'О программе',
+                message: 'Брейн ринг. Автор Геннадий Ким (web.artisant@gmail.com)',
+                buttons: ['Ok']
+            })
+          }
+        }
+      ]
+    }
+  ]
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+}
