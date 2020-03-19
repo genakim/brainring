@@ -87,6 +87,11 @@ export default {
       if (this.round > 5) {
         this.gameStarted = false
       }
+    },
+    roundStarted: function () { // round count
+      if (this.gameStarted && this.roundStarted === false) {
+        this.round++
+      }
     }
   },
   methods: {
@@ -100,7 +105,7 @@ export default {
         if (Object.keys(this.wrongList).length === Object.keys(this.scores).length) { // all players answered wrong, the round ends
           this.stopRound()
         } else {
-          this.startRound() // next players continue round
+          this.startRound(true) // next players continue round
         }
       }
     },
@@ -108,7 +113,6 @@ export default {
       if (!this.gameStarted || this.wrongList[playerId]) {
         return
       }
-
       if (this.loading) { // player pushed the button
         this.stopTimer()
         this.playerId = playerId
@@ -131,17 +135,19 @@ export default {
       this.loading = false
       this.wrongList = {}
     },
-    startRound: function () {
+    startRound: function (continueRound = false) {
       const vm = this
 
       if (vm.timerId) {
         return this.stopTimer()
       }
 
-      vm.round++
+      if (continueRound) {
+        vm.value = 2000
+      }
+
       vm.roundStarted = true
       vm.loading = true
-      vm.gameStarted = true
       vm.playerId = null
       vm.falseStartPlayerId = null
 
@@ -153,17 +159,12 @@ export default {
       }, 100)
     },
     startGame: function () {
+      this.resetGame()
       this.gameStarted = true
     },
     resetGame: function () {
-      this.stopTimer()
-      this.value = 3000
-      this.valueStart = 3000
-      this.roundStarted = false
+      this.stopRound()
       this.gameStarted = false
-      this.falseStartPlayerId = null
-      this.playerId = null
-      this.wrongList = {}
       this.round = 1
       this.scores = {
         green: 0,
