@@ -1,7 +1,7 @@
 <template>
   <q-layout view="lHh Lpr lFf">
     <q-form class="q-pa-sm q-gutter-y-sm" ref="form">
-      <p class="text-weigh-bold content-center">Игра</p>
+      <h5 class="text-weigh-bold round-font text-center">Игра</h5>
       <div class="q-gutter-sm row">
         <q-input
                 class="col"
@@ -22,7 +22,7 @@
                 :rules="[ val => val >= 20 || 'Вы серъезно?']"
         />
       </div>
-      <p class="text-weigh-bold">Звуки</p>
+      <h5 class="text-weigh-bold round-font text-center">Звуки</h5>
       <SoundPicker @fileUploaded="fileUploaded" @play="play" label="Старт раунда" :fileName="roundStartSound" soundProperty="roundStartSound"/>
       <SoundPicker @fileUploaded="fileUploaded" @play="play" label="Конец раунда" :fileName="roundFinishedSound" soundProperty="roundFinishedSound"/>
       <SoundPicker @fileUploaded="fileUploaded" @play="play" label="Фальстарт" :fileName="falseStartSound" soundProperty="falseStartSound"/>
@@ -30,8 +30,8 @@
       <SoundPicker @fileUploaded="fileUploaded" @play="play" label="Идет игра" :fileName="backgroundSound" soundProperty="backgroundSound"/>
       <SoundPicker @fileUploaded="fileUploaded" @play="play" label="Время кончается" :fileName="timerIsRunningOverSound" soundProperty="timerIsRunningOverSound"/>
       <q-footer class="flex justify-center q-pa-sm bg-transparent">
-        <q-btn label="Сохранить" @click="save" color="primary" rounded/>
-        <q-btn label="По-умолчанию" @click="reset" color="primary" class="q-ml-sm" flat rounded/>
+        <q-btn label="Сохранить" @click="save" color="primary round-font" rounded/>
+        <q-btn label="По-умолчанию" @click="reset" color="primary" class="q-ml-sm round-font" flat rounded/>
       </q-footer>
     </q-form>
   </q-layout>
