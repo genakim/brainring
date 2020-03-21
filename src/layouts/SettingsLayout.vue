@@ -85,9 +85,13 @@ export default {
         properties.forEach((property) => {
           values[property] = this[property]
         })
-        saveSettings(values, function (err) {
-          // TODO: notify
-          console.log('save', err)
+        saveSettings(values, err => {
+          this.$q.notify({
+            timeout: 1000,
+            position: 'top',
+            type: err ? 'warning' : 'positive',
+            message: err || 'Сохранено'
+          })
         })
       })
     },
